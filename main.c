@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+//#include "SettingsReaderAndWriter.h"
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
@@ -33,7 +35,7 @@ void drawCell(int array[7][6], int x, int y) {
     }
 }
 
-// Methode um das Feld in Hübsch auszulesen
+// Methode um das Array / Feld in hübsch auszulesen
 void drawArray(int array[7][6]) {
     printf("| 1 | 2 | 3 | 4 | 5 | 6 | 7 |\n");
     for(int i = 0; i < 6;i++) {
@@ -57,6 +59,7 @@ void cleanArray(int array[7][6]) {
     }
 }
 
+// Methode um das Spielfeld zu zeichnen
 void drawField(int array[7][6]){
     printf("| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |\n");
     int counter = 1;
@@ -103,9 +106,14 @@ int horizontalCheck(int array[7][6], int direction, int startAtX, int startAtY, 
     return counter;
 }
 
+// Diagonale Überprüfungsmethode
+
 int diagonalCheck(int array[7][6], int directionX, int directionY, int startAtX, int startAtY, int player){
     int x = startAtX, y = startAtY;
     int counter=0;
+    if (y==-1) { // Arrays beahve
+        return counter;
+    }
     while (array[x][y] == player){
         counter++;
         x += directionX;
@@ -115,25 +123,31 @@ int diagonalCheck(int array[7][6], int directionX, int directionY, int startAtX,
 }
 
 int checkIfSomeOneHasWon(int array[7][6], int stonePlacedAtX, int stonePlacedAtY, int player){
-
+    // Check von Stein aus nach Unten
     if(verticalCheck(array,1,stonePlacedAtX,stonePlacedAtY,player)  == 4) {
+        printf("Vertiakl");
         return 1;
     }
-
+    // Check links und rechts vom Stein <- X ->
     if(horizontalCheck(array,1,stonePlacedAtX,stonePlacedAtY,player) + horizontalCheck(array,-1,stonePlacedAtX-1,stonePlacedAtY,player) >= 4 ){
+        printf("Horizontal");
         return 1;
     }
-
     // Check von Stein nach Links unten und von Stein nach rechts oben;
     if(diagonalCheck(array,-1,-1,stonePlacedAtX,stonePlacedAtY,player) + diagonalCheck(array,1,1,stonePlacedAtX+1,stonePlacedAtY+1,player) >= 4){
+        printf("Diagonal nach Rechts oben");
         return 1;
     }
+    // Check von Stein nach Links oben und von Stein nach rechts unten;
     if(diagonalCheck(array,-1,1,stonePlacedAtX,stonePlacedAtY,player) + diagonalCheck(array,1,-1,stonePlacedAtX+1,stonePlacedAtY-1,player) >= 4){
+        printf("Diagonal nach Links oben");
         return 1;
     }
 
     return 0;
 }
+
+// Methode um zu überprüfen ob die Spalte voll ist und wenn nicht wird dort der Steinpalziert, gibt die Y Pos des Steins zurück
 
 int checkIfColumIsFullAndPlace(int array[7][6], int colum, int player) {
     if(colum >= 0 && colum <= 7) {
@@ -147,6 +161,8 @@ int checkIfColumIsFullAndPlace(int array[7][6], int colum, int player) {
     return -1;
 }
 
+// Methode um den Spieler zu tauschen
+
 int changePlayer(int player) {
     switch (player) {
         case 1:
@@ -156,15 +172,10 @@ int changePlayer(int player) {
     }
 }
 
-int getY(int array[7][6], int x){
-    for (int i =0; i<=5;i++){
-        if(array[x][i] != 0){
-            return i;
-        }
-    }
-}
+// Hier befindet sich die eigentliche spiel Logik
+// Zweite varibale Dient dazu um definieren ob das Spiel gegen Echten Spieler oder PC gespielt wird (0 Human, 1
 
-void startGame(int array[7][6]) {
+void startGame(int array[7][6], int cpu) {
     int round = 0;
     int player = 1; // player1 = 1, player2 = 2;
     int placeStoneAt = 0;
@@ -172,22 +183,51 @@ void startGame(int array[7][6]) {
     while (round != 43) {
         printf("Bitte gib eine Reihe ein in Welcher dein Stein geworfen werden soll: \n");
         scanf(" %i", &placeStoneAt);
-        y = checkIfColumIsFullAndPlace(array,placeStoneAt-1,player);
-        while (y==-1){
+        y = checkIfColumIsFullAndPlace(array, placeStoneAt - 1, player);
+        while (y == -1) {
             printf("Bitte gib eine gueltige Reihe(1-7) an die nicht voll ist \n");
             scanf(" %i", &placeStoneAt);
+            y = checkIfColumIsFullAndPlace(array, placeStoneAt - 1, player);
         }
-        drawField(array);
-        //drawArray(array);
-        //printArray(array);
-        printf("X: %i, Y: %i\n",placeStoneAt-1, y);
-        if(round >= 6){
-            if(checkIfSomeOneHasWon(array, placeStoneAt-1, y, player)){
+        if (round >= 6) {
+            if (checkIfSomeOneHasWon(array, placeStoneAt - 1, y, player)) {
                 printf("Player %i has won after %i rounds", player, round);
+                drawField(array); // Normale Zeichen Methode vom Feld
+                //drawArray(array); // Debug Methode
+                //printArray(array); // Debug Methode
                 break;
             }
         }
-        player = changePlayer(player);
+        // Der Zug vom Bot wird parallel zum Spielezug gemacht
+        // Der Code zum Spieler Unterscheidet sich jeglich darin das der Bot die Zahl solange Random erzeugt, wie das Feld leer ist
+        // TODO: Min max Algo;
+        //   - 2 Schwierigkeiten vom "Bot":
+        //      - 1 Random
+        //      - 2 Min Max
+        //      - startGame Methode 3 Attribute hinzufügen oder BotStufe 0 Kein Bot, 1 RandomBot, 2 MinMax
+        if (cpu == 1) {
+            y = checkIfColumIsFullAndPlace(array, rand() % 7, 2);
+            while (y == -1) {
+                y = checkIfColumIsFullAndPlace(array, rand() % 7, 2);
+            }
+            printf("Coumpter hat in Spalte %i den Stein geworfen\n", y);
+            if (round >= 6) {
+                if (checkIfSomeOneHasWon(array, placeStoneAt - 1, y, 2)) {
+                    printf("Computer has won after %i rounds", round);
+                    drawField(array); // Normale Zeichen Methode vom Feld
+                    //drawArray(array); // Debug Methode
+                    //printArray(array); // Debug Methode
+                    break;
+                }
+            }
+            round++;
+        }
+        drawField(array); // Debug Methode
+        //drawArray(array); // Debug Methode
+        //printArray(array); // Normal Print Methode
+        if (cpu == 0) {
+            player = changePlayer(player);
+        }
         round++;
     }
     if (round == 43) {
@@ -195,12 +235,17 @@ void startGame(int array[7][6]) {
     }
 }
 
-int menueText() {
+
+// Hier werden die Auswahlmöglichkeiten für den Spieler niedergeschrieben;
+
+void menueText() {
     printf("Willkommen zu Vier gewinnt, waehle ein Spielmodus aus \n");
     printf("1) 2 Spieler\n");
     printf("2) Gegen den Computer\n");
     printf("3) Exit!\n");
 }
+
+// Hier wird
 
 int menueEingabe() {
     menueText();
@@ -213,24 +258,29 @@ int menueEingabe() {
     return eingabe;
 }
 
-int menue() {
+// Menu Methode hier wird das Array auf Null gesetzt und der überprüft welchen Spielmods der Spieler auswählt
+// TODO:
+//  - Settings einbauen, (Daten peresestieren)
+//  - TCP Client
+
+void menue() {
     int loop = 0;
     int array[7][6];
     while (loop != -1) {
-        cleanArray(array);
+        cleanArray(array); // Sollte ins eigentlich Spiel outgesourced werden und bei turn == 0 aufgerufen werden
         switch (menueEingabe()) {
             case 1:
-                startGame(array);
+                startGame(array, 0);
                 break;
             case 2:
-                startGame(array);
+                startGame(array, 1);
                 break;
             case 3:
                 loop = -1;
+                break;
         }
         printf("\n");
     }
-    return 0;
 }
 
 int main() {
